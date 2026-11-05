@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Menu 3000</title>
+    <script src="https://jsdelivr.net"></script>
+    <script src="https://tailwindcss.com"></script>
+    <link href="https://cloudflare.com" rel="stylesheet">
+    <style>
+        @import url('https://googleapis.com');
+        body { font-family: 'Poppins', 'Cairo', sans-serif; }
+        .rtl { direction: rtl; font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen pb-24">
+
+    <!-- ⚙️ إعدادات Supabase (امسح النقط وحط السوارت ديالك هنا) -->
+    <script>
+        const SUPABASE_URL = "https://tgesxshhqalbjguzkhkh.supabase.co/rest/v1/ا";
+        const SUPABASE_ANON_KEY = "sb_publishable_pI9xtBNA_w-9ZmaZkxjnIQ_t70boXcj";
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+
+    <!-- 🌐 الهيدر وأزرار اللغات -->
+    <header class="bg-white shadow-sm sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-orange-600 flex items-center gap-2 cursor-pointer" onclick="toggleAdmin()">
+            <i class="fa-solid font-black fa-utensils"></i> SmartMenu
+        </h1>
+        <div class="flex gap-1 bg-gray-100 p-1 rounded-lg text-sm">
+            <button onclick="setLang('ar')" id="btn-ar" class="px-3 py-1 rounded-md font-bold">العربية</button>
+            <button onclick="setLang('fr')" id="btn-fr" class="px-3 py-1 rounded-md bg-white shadow font-bold text-orange-600">FR</button>
+            <button onclick="setLang('en')" id="btn-en" class="px-3 py-1 rounded-md font-bold">EN</button>
+        </div>
+    </header>
+
+    <!-- 📱 واجهة الزبون الرئيسي -->
+    <main id="client-view" class="max-w-2xl mx-auto p-4">
+        <div id="table-banner" class="bg-orange-50 text-orange-700 px-4 py-2 rounded-xl mb-6 text-center font-bold hidden"></div>
+        <div id="categories-tabs" class="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none"></div>
+        <div id="dishes-list" class="grid gap-4">
+            <div class="text-center text-gray-400 py-12"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><p>Loading...</p></div>
+        </div>
+    </main>
+
+    <!-- 🛒 شريط السلة السفلي للزبون -->
+    <div id="cart-bar" class="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex justify-between items-center shadow-lg transform translate-y-full transition-transform max-w-2xl mx-auto rounded-t-2xl hidden z-50">
+        <div>
+            <p class="text-xs text-gray-400" id="cart-count">0 items</p>
+            <p class="text-xl font-bold text-gray-900" id="cart-total">0.00 MAD</p>
+        </div>
+        <button onclick="openCartModal()" class="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-orange-700 transition">
+            <i class="fa-solid fa-basket-shopping"></i> <span id="btn-order-text">Voir la commande</span>
+        </button>
+    </div>
+
+    <!-- 🧾 نافذة تفاصيل السلة لتأكيد الطلب -->
+    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center hidden">
+        <div class="bg-white w-full max-w-2xl rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold" id="modal-title">Votre Commande</h3>
+                <button onclick="closeCartModal()" class="text-gray-400 text-2xl">&times;</button>
+            </div>
+            <div id="cart-items" class="grid gap-4 mb-6"></div>
+            <div class="border-t pt-4 mb-6 flex justify-between items-center font-bold text-xl">
+                <span id="modal-total-label">Total:</span>
+                <span id="modal-total-val" class="text-orange-600">0 MAD</span>
+            </div><button onclick="submitOrder()" id="btn-submit-order" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg flex justify-center items-center gap-2 shadow-lg hover:bg-green-700 transition">
+                <i class="fa-solid fa-check"></i> <span id="btn-submit-text">Envoyer au Chef</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 👑 لوحة التحكم المخفية (Admin & Kitchen Dashboard) -->
+    <main id="admin-view" class="max-w-4xl mx-auto p-4 hidden">
+        <div class="flex justify-between items-center border-b pb-4 mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2"><i class="fa-solid fa-gauge"></i> Dashboard & Cuisine</h2>
+            <button onclick="toggleAdmin()" class="text-gray-500 bg-gray-100 px-4 py-2 rounded-lg font-bold"><i class="fa-solid fa-arrow-left"></i> Retour Menu</button>
+        </div>
+
+        <div class="flex gap-4 border-b mb-6">
+            <button onclick="switchAdminTab('orders')" id="tab-orders" class="pb-2 border-b-2 border-orange-600 font-bold text-orange-600">📥 Commandes Live</button>
+            <button onclick="switchAdminTab('add-dish')" id="tab-add-dish" class="pb-2 text-gray-500 font-bold">➕ Ajouter un Plat</button>
+        </div>
+
+        <div id="admin-orders-section" class="grid gap-4">
+            <div class="text-center py-12 text-gray-400">Aucune commande pour le moment.</div>
+        </div>
+
+        <div id="admin-dish-section" class="bg-white p-6 rounded-2xl shadow-sm border hidden">
+            <form onsubmit="saveDish(event)" class="grid gap-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-semibold mb-1">Prix (MAD)</label><input type="number" step="0.01" id="f-price" required class="w-full border p-2.5 rounded-xl"></div>
+                    <div><label class="block text-sm font-semibold mb-1">Catégorie</label><input type="text" id="f-category" placeholder="Plats, Boissons..." required class="w-full border p-2.5 rounded-xl"></div>
+                </div>
+                <div><label class="block text-sm font-semibold mb-1">Lien de l'image (URL)</label><input type="url" id="f-image" placeholder="https://..." class="w-full border p-2.5 rounded-xl"></div>
+                <div class="grid grid-cols-3 gap-4 border-t pt-4 bg-gray-50 p-3 rounded-xl">
+                    <div><label class="block text-sm font-bold text-orange-600 mb-1">الإسم (العربية)</label><input type="text" id="f-name-ar" required class="w-full border p-2 rounded-lg"></div>
+                    <div><label class="block text-sm font-bold text-blue-600 mb-1">Nom (Français)</label><input type="text" id="f-name-fr" required class="w-full border p-2 rounded-lg"></div>
+                    <div><label class="block text-sm font-bold text-green-600 mb-1">Name (English)</label><input type="text" id="f-name-en" required class="w-full border p-2 rounded-lg"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-4 bg-gray-50 p-3 rounded-xl">
+                    <div><label class="block text-sm font-bold text-orange-600 mb-1">الوصف (العربية)</label><textarea id="f-desc-ar" class="w-full border p-2 rounded-lg" rows="2"></textarea></div>
+                    <div><label class="block text-sm font-bold text-blue-600 mb-1">Description (Français)</label><textarea id="f-desc-fr" class="w-full border p-2 rounded-lg" rows="2"></textarea></div>
+                    <div><label class="block text-sm font-bold text-green-600 mb-1">Description (English)</label><textarea id="f-desc-en" class="w-full border p-2 rounded-lg" rows="2"></textarea></div>
+                </div>
+                <button type="submit" class="w-full bg-orange-600 text-white py-3 rounded-xl font-bold text-lg hover:bg-orange-700 transition">💾 Enregistrer le plat</button>
+            </form>
+        </div>
+    </main><script>
+        let currentLang = 'fr';
+        let allDishes = [];
+        let cart = {};
+        let tableNumber = new URLSearchParams(window.location.search).get('table') || null;
+        let activeCategory = 'All';
+
+        const dict = {
+            ar: { orderText: "عرض الطلب", items: "أطباق", submitText: "إرسال إلى المطبخ", modalTitle: "طلبيتك", total: "المجموع", noTable: "الرجاء مسح كود الطاولة للطلب", tableTitle: "الطاولة رقم", empty: "القائمة فارغة، أضف أطباق من لوحة التحكم!" },
+            fr: { orderText: "Voir la commande", items: "articles", submitText: "Envoyer au Chef", modalTitle: "Votre Commande", total: "Total", noTable: "Veuillez scanner le QR de votre table", tableTitle: "Table N°", empty: "Le menu est vide, ajoutez des plats depuis le Dashboard !" },
+            en: { orderText: "View Order", items: "items", submitText: "Send to Kitchen", modalTitle: "Your Order", total: "Total", noTable: "Please scan your table QR code", tableTitle: "Table No.", empty: "Menu is empty, add dishes from the Dashboard!" }
+        };
+
+        async function init() {
+            if (tableNumber) {
+                const b = document.getElementById('table-banner');
+                b.innerText = ${dict[currentLang].tableTitle} ${tableNumber};
+                b.classList.remove('hidden');
+            }
+            await fetchDishes();
+            updateUI();
+            setupRealtimeOrders();
+        }
+
+        async function fetchDishes() {
+            const { data, error } = await _supabase.from('dishes').select('*');
+            if (!error && data) {
+                allDishes = data;
+                renderCategories();
+                renderDishes();
+            }
+        }
+
+        function setLang(lang) {
+            currentLang = lang;
+            ['ar', 'fr', 'en'].forEach(l => {
+                const btn = document.getElementById(btn-${l});
+                if(l === lang) { btn.classList.add('bg-white', 'shadow', 'text-orange-600'); }
+                else { btn.classList.remove('bg-white', 'shadow', 'text-orange-600'); }
+            });
